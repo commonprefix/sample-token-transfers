@@ -36,8 +36,6 @@ export async function getXrplChainConfig(): Promise<XrplChainConfig> {
 export async function getSolanaChainConfig(): Promise<SolanaChainConfig> {
   const chainConfig = await getChainConfig();
 
-  console.log(chainConfig);
-
   const solanaChainId = Object.keys(chainConfig.chains).find(
     (chain) => chainConfig.chains[chain].chainType === "svm",
   ) as string;

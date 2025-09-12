@@ -72,3 +72,22 @@ Example:
 ```bash
 bun xrpl:trust-line SQD 10000
 ```
+
+## Solana ITS Transfer
+
+Send example token (currently set to 2cc06aa67856613c2220b3321e4824fb6ab5f567ac2ef0b656c4eb5f8e857239) from Solana to other chain:
+
+```bash
+bun solana:start <destination-chain> <destination-address> <amount>
+```
+
+Example:
+
+```bash
+bun solana:start eth-sepolia 0x5eaF5407acc1be854644BE2Be20Ac23D07e491D6 1
+```
+
+> Note: the destination address and amount are optional.
+> On devnet (currently ITS is deployed only on devnet), "eth-sepolia" is "eth-sepolia"
+> There is no "gas price" on Solana - transaction fees are fixed, and there is an optional priority fee. 
+> The script will display the average prioritization fee as returned by the RPC
