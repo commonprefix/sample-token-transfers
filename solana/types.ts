@@ -6,4 +6,5 @@ export type InterchainTransferInput = {
   destinationAddress: string;
   amount: string;
   gasValue: string;
+  priorityFee: number;
 };

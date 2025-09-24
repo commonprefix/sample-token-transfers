@@ -9,6 +9,7 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 
 import {
@@ -38,7 +39,7 @@ const SPL_TOKEN_PROGRAM_ID = new PublicKey(
 );
 
 export async function buildInterchainTransferTx(
-  input: InterchainTransferInput
+  input: InterchainTransferInput,
 ): Promise<Transaction> {
   const chainConfig = await getSolanaChainConfig();
   const rpcUrl = chainConfig.config.rpc?.[0];
@@ -139,7 +140,18 @@ export async function buildInterchainTransferTx(
     keys,
     data,
   });
-  const tx = new Transaction().add(ix);
+  const tx = new Transaction();
+  
+  // Add optional priority fee instruction at the start
+  if (input.priorityFee > 0) {
+    tx.add(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: BigInt(input.priorityFee),
+      })
+    );
+  }
+
+  tx.add(ix);
   tx.feePayer = caller;
   const { blockhash } = await connection.getLatestBlockhash("confirmed");
   tx.recentBlockhash = blockhash;

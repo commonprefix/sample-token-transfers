@@ -118,6 +118,7 @@ const params = {
   destinationAddress: DESTINATION_ADDRESS,  
   amount: AMOUNT,
   gasValue: GAS,
+  priorityFee: averageFeeIncludingZeros, // use the average priority fee
 } as InterchainTransferInput;
 
 const tx = await buildInterchainTransferTx(params);
@@ -130,5 +131,5 @@ const signature = await sendAndConfirmTransaction(connection, tx, [
 
 console.log("Sent transaction!", signature);
 console.log("View it on the explorer: https://explorer.solana.com/tx/" + signature + '?cluster=' + solanaCluster);
-console.log("View it on Axelarscan: " + axelarscanUrl + "/gmp/" + signature + '-15');
+console.log("View it on Axelarscan: " + axelarscanUrl + "/gmp/" + signature + '-15'); // might have to update this index
 
