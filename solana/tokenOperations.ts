@@ -94,7 +94,7 @@ export async function buildInterchainTransferTx(
   );
 
   const [gatewayRootPda] = findGatewayRootPda(gatewayProgramId);
-  const [gasConfigPda] = findGasConfigPda(gasServiceProgramId);
+  const [gasConfigPda] = await findGasConfigPda(gasServiceProgramId);
   const [callContractSigningPda, signingPdaBump] =
     findCallContractSigningPda(itsProgramId);
 

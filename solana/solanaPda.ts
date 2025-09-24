@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { arrayify, keccak256 } from "ethers/lib/utils";
+import { getSolanaChainConfig } from "../common/chains";
 
 // Seed prefixes - these must match the Rust implementation
 const ITS_SEED = "interchain-token-service";
@@ -12,6 +13,7 @@ const PREFIX_CUSTOM_TOKEN_SALT = "solana-custom-token-salt";
 const FLOW_SLOT_SEED = "flow-slot";
 const USER_ROLES_SEED = "user-roles";
 const CALL_CONTRACT_SIGNING_SEED = "gtw-call-contract";
+const GAS_CONFIG_SEED = "gas-service";
 
 export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
@@ -100,11 +102,26 @@ export function findGatewayRootPda(
   );
 }
 
-export function findGasConfigPda(
+export async function findGasConfigPda(
   gasServiceProgramId: PublicKey
-): [PublicKey, number] {
+): Promise<[PublicKey, number]> {
+  // for now, hardcode the expected value
+  // likely there will be changes how the gas config pda is derived in the future:
+  // c.f. https://github.com/eigerco/axelar-amplifier-solana/commit/f4da7b6a586f77ce47958e176da39f3ff1595371
+  //  but https://github.com/axelarnetwork/axelar-contract-deployments/blob/062efa082fcfcfca593107fbfb90f814c9405dcd/solana/src/gas_service.rs#L83 
+  return [new PublicKey("GQ3Yde4evoph1qnogmb8VASZgqzXUxbVKx4oxnNbcZK9"), 0];
+
+  const chainConfig = await getSolanaChainConfig();
+  const gasServiceOperator = (chainConfig.config as any)?.contracts?.AxelarGasService?.operator as string | undefined;
+  if (!gasServiceOperator) {
+    throw new Error("Gas Service Operator address not found in Solana config");
+  }
+  const gasServiceOperatorPK = new PublicKey(gasServiceOperator);
+
+  console.log("Deriving gas config pda from", GAS_CONFIG_SEED, gasServiceOperatorPK.toBase58());
+  console.log("GAS CONFIG SEED: ", gasConfigSalt());
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("config")],
+    [gasConfigSalt(), gasServiceOperatorPK.toBytes()],
     gasServiceProgramId
   );
 }
@@ -148,6 +165,17 @@ export function linkedTokenDeployerSalt(
         ...Buffer.from(PREFIX_CUSTOM_TOKEN_SALT),
         ...deployer.toBytes(),
         ...salt,
+      ])
+    )
+  );
+}
+
+export function gasConfigSalt(
+): Uint8Array {
+  return arrayify(
+    keccak256(
+      new Uint8Array([
+        ...Buffer.from(GAS_CONFIG_SEED),
       ])
     )
   );

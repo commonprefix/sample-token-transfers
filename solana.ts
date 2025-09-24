@@ -2,38 +2,39 @@ import { getSolanaChainConfig } from "./common/chains";
 import { getSolanaKeypair } from "./solana/wallet";
 import { calculateEstimatedFee } from "./common/gasEstimation";
 import { environment } from "./common/env";
-import { Connection, clusterApiUrl, PublicKey, LAMPORTS_PER_SOL, sendAndConfirmTransaction } from "@solana/web3.js";
-import { ExitStatus } from "typescript";
+import { Connection, clusterApiUrl, LAMPORTS_PER_SOL, sendAndConfirmTransaction, type Cluster } from "@solana/web3.js";
 import { fundWallet } from "./solana/wallet";
 import { buildInterchainTransferTx } from "./solana/tokenOperations";
 import { type InterchainTransferInput } from "./solana/types";
 
 // --- Constants ---
-const TOKEN_ID: string = "2cc06aa67856613c2220b3321e4824fb6ab5f567ac2ef0b656c4eb5f8e857239";
-const TOKEN_ADDRESS: string = "8KtHkTM1QbxixhT8UCAzYjh9zGaW7iWkbkS3QRJpTMqz";
-const DESTINATION_CHAIN: string = process.argv[2] || "eth-sepolia";
-const DESTINATION_ADDRESS: string = process.argv[3] || "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2";
-const AMOUNT = process.argv[4] || "1";
+const TOKEN_ID: string = process.argv[2] || "2cc06aa67856613c2220b3321e4824fb6ab5f567ac2ef0b656c4eb5f8e857239";
+const TOKEN_ADDRESS: string = process.argv[3] || "8KtHkTM1QbxixhT8UCAzYjh9zGaW7iWkbkS3QRJpTMqz";
+const DESTINATION_CHAIN: string = process.argv[4] || "eth-sepolia";
+const DESTINATION_ADDRESS: string = process.argv[5] || "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2";
+const AMOUNT = process.argv[6] || "1";
 
 // translate environment into one of the Solana clusters
 // Possible options: 'devnet' | 'testnet' | 'mainnet-beta'
-const solanaClusterMapping = {
-  "devnet-amplifier": "devnet",
-  "testnet": "testnet",
-  "mainnet": "mainnet-beta",
+const configMapping = {
+  "devnet-amplifier": {solanaCluster: "devnet", axelarscanUrl: "https://devnet-amplifier.axelarscan.io"},
+  "testnet": {solanaCluster: "testnet", axelarscanUrl: "https://testnet.axelarscan.io"},
+  "mainnet": {solanaCluster: "mainnet-beta", axelarscanUrl: "https://axelarscan.io"},
 };
+
 console.log("Environment:", environment);
-if (!(environment in solanaClusterMapping)) {
+if (!(environment in configMapping)) {
   throw new Error("Invalid environment");
 }
-const solanaCluster = solanaClusterMapping[environment];
+const {solanaCluster, axelarscanUrl} = configMapping[environment];
+
 
 const SOLANA_CONFIG = await getSolanaChainConfig();
 const SOLANA_CONTRACTS = SOLANA_CONFIG.config.contracts;
 
 const { InterchainTokenService, AxelarGateway, AxelarGasService } = SOLANA_CONTRACTS;
 
-const connection = new Connection(clusterApiUrl(solanaCluster), "confirmed");
+const connection = new Connection(clusterApiUrl(solanaCluster as Cluster), "confirmed");
 
 // get balance of the current wallet
 const keypair = getSolanaKeypair();
@@ -45,13 +46,13 @@ if (balance < 1 * LAMPORTS_PER_SOL && (environment == "testnet" || environment =
   // attempt to refund wallet if we are on a testnet 
   balance = await fundWallet(connection, keypair);
   console.log("Balance after funding wallet is", balance);
-
 }
 
-// for every signature on the transaction, the transaction needs to pay 5000 lamports (with 10^9 lamports = 1 SOL)
+// SOLANA GAS ESTIMATION 
+// For every signature on the transaction, the transaction needs to pay 5000 lamports (with 10^9 lamports = 1 SOL)
 
-// there is an optional priority fee, which we query now -> equivalent to "gas price" when there is much on-chain congestion
-// example taken from https://docs.chainstack.com/docs/solana-estimate-priority-fees-getrecentprioritizationfees
+// There is an optional priority fee, which we query now -> this is equivalent to the "gas price" when there is high demand
+// This example is taken from https://docs.chainstack.com/docs/solana-estimate-priority-fees-getrecentprioritizationfees
 interface PrioritizationFeeObject {
     slot: number;
     prioritizationFee: number;
@@ -103,10 +104,11 @@ console.log('===================================================================
 console.log(` 💰 Average Prioritization Fee (including slots with zero fees): ${averageFeeIncludingZeros} micro-lamports.`);
 console.log(` 💰 Average Prioritization Fee (excluding slots with zero fees): ${averageFeeExcludingZeros} micro-lamports.`);
 console.log(` 💰 Median Prioritization Fee (excluding slots with zero fees): ${medianFee} micro-lamports.`);
+// Done with reading prioritization fee for Solana
 
-//const GAS = await calculateEstimatedFee(SOLANA_CONFIG.id, DESTINATION_CHAIN);
-//console.log("Estimated gas as", GAS);
-const GAS = "0"; // Specifying a non-zero gas amount currently doesn't work
+// Calculating how much gas we have to pay for the ITS transfer to go through.
+const GAS = await calculateEstimatedFee(SOLANA_CONFIG.id, DESTINATION_CHAIN);
+console.log("Estimated gas as", GAS);
 
 const params = {
   caller: keypair.publicKey.toString(),
@@ -127,3 +129,6 @@ const signature = await sendAndConfirmTransaction(connection, tx, [
 ]);
 
 console.log("Sent transaction!", signature);
+console.log("View it on the explorer: https://explorer.solana.com/tx/" + signature + '?cluster=' + solanaCluster);
+console.log("View it on Axelarscan: " + axelarscanUrl + "/gmp/" + signature + '-15');
+
