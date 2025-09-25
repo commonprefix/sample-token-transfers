@@ -8,9 +8,9 @@ import { buildInterchainTransferTx } from "./solana/tokenOperations";
 import { type InterchainTransferInput } from "./solana/types";
 
 // --- Constants ---
-const TOKEN_ID: string = process.argv[2] || "2cc06aa67856613c2220b3321e4824fb6ab5f567ac2ef0b656c4eb5f8e857239";
-const TOKEN_ADDRESS: string = process.argv[3] || "8KtHkTM1QbxixhT8UCAzYjh9zGaW7iWkbkS3QRJpTMqz";
-const DESTINATION_CHAIN: string = process.argv[4] || "eth-sepolia";
+const TOKEN_ID: string = process.argv[2] || "f238f2d38d16c5f472629c401433ccb704eea5e9d1aa8bb8e75e3628db65dc65";
+const TOKEN_ADDRESS: string = process.argv[3] || "8yqTiWbBsd82Lcnw3wJpX2mTVPxyftKKoMt2hCA2m2wS";
+const DESTINATION_CHAIN: string = process.argv[4] || "avalanche-fuji";
 const DESTINATION_ADDRESS: string = process.argv[5] || "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2";
 const AMOUNT = process.argv[6] || "1";
 
