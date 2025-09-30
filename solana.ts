@@ -13,6 +13,10 @@ const TOKEN_ADDRESS: string = process.argv[3] || "8yqTiWbBsd82Lcnw3wJpX2mTVPxyft
 const DESTINATION_CHAIN: string = process.argv[4] || "avalanche-fuji";
 const DESTINATION_ADDRESS: string = process.argv[5] || "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2";
 const AMOUNT = process.argv[6] || "1";
+let PAYLOAD = process.argv[7] || null;
+if((PAYLOAD ?? "").length > 530) {
+  throw new Error("Payload too long! Consider using off-chain data");
+}
 
 // translate environment into one of the Solana clusters
 // Possible options: 'devnet' | 'testnet' | 'mainnet-beta'
@@ -107,7 +111,7 @@ console.log(` 💰 Median Prioritization Fee (excluding slots with zero fees): $
 // Done with reading prioritization fee for Solana
 
 // Calculating how much gas we have to pay for the ITS transfer to go through.
-const GAS = await calculateEstimatedFee(SOLANA_CONFIG.id, DESTINATION_CHAIN);
+const GAS = await calculateEstimatedFee(SOLANA_CONFIG.id, DESTINATION_CHAIN, PAYLOAD);
 console.log("Estimated gas as", GAS);
 
 const params = {
@@ -119,6 +123,7 @@ const params = {
   amount: AMOUNT,
   gasValue: GAS,
   priorityFee: averageFeeIncludingZeros, // use the average priority fee
+  payload: PAYLOAD,
 } as InterchainTransferInput;
 
 const tx = await buildInterchainTransferTx(params);

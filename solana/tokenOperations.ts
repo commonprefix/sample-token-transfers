@@ -38,6 +38,9 @@ const SPL_TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
 
+const INTERCHAIN_TRANSFER_INSTRUCTION_ID = 8;
+const CALL_CONTRACT_WITH_TOKEN_INSTRUCTION_ID = 15;
+
 export async function buildInterchainTransferTx(
   input: InterchainTransferInput,
 ): Promise<Transaction> {
@@ -105,14 +108,22 @@ export async function buildInterchainTransferTx(
   );
   const amount = BigInt(input.amount);
   const gas = BigInt(input.gasValue ?? "0");
+  const payload = input.payload ?? "";
+  const instructionId = input.payload ? CALL_CONTRACT_WITH_TOKEN_INSTRUCTION_ID : INTERCHAIN_TRANSFER_INSTRUCTION_ID;
+
+  let encodedPayload = Buffer.from("");
+  if(instructionId == CALL_CONTRACT_WITH_TOKEN_INSTRUCTION_ID) {
+    encodedPayload = Buffer.concat([encodeU32LE(payload.length), Buffer.from(payload)])
+  }
 
   const data = Buffer.concat([
-    encodeVariantU8(8),
+    encodeVariantU8(instructionId),
     Buffer.from(tokenIdBytes),
     encodeStringBorsh(input.destinationChain),
     encodeU32LE(destinationAddressBytes.length),
     Buffer.from(destinationAddressBytes),
     encodeU64LE(amount),
+    encodedPayload,
     encodeU64LE(gas),
     Buffer.from([signingPdaBump]),
   ]);

@@ -7,4 +7,5 @@ export type InterchainTransferInput = {
   amount: string;
   gasValue: string;
   priorityFee: number;
+  payload: string;
 };
