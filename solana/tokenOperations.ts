@@ -14,7 +14,8 @@ import {
 
 import {
   findCallContractSigningPda,
-  findGasConfigPda,
+  findEventAuthority,
+  findGasTreasuryPda,
   findGatewayRootPda,
   findItsRootPda,
   findTokenManagerPda,
@@ -38,8 +39,7 @@ const SPL_TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
 
-const INTERCHAIN_TRANSFER_INSTRUCTION_ID = 8;
-const CALL_CONTRACT_WITH_TOKEN_INSTRUCTION_ID = 15;
+const INTERCHAIN_TRANSFER_INSTRUCTION_ID = 16;
 
 export async function buildInterchainTransferTx(
   input: InterchainTransferInput,
@@ -52,7 +52,7 @@ export async function buildInterchainTransferTx(
   const gatewayProgramId = await getGatewayProgramId();
   const gasServiceProgramId = await getAxelarGasServiceProgramId();
 
-  const caller = new PublicKey(input.caller);
+  const payer = new PublicKey(input.caller);
   const connection = new Connection(rpcUrl, "confirmed");
 
   const tokenIdBytes = Buffer.from(input.tokenId.replace(/^0x/, ""), "hex");
@@ -63,28 +63,36 @@ export async function buildInterchainTransferTx(
     itsRootPda,
     tokenIdBytes
   );
-  const mint = new PublicKey(input.tokenAddress);
+  const tokenMint = new PublicKey(input.tokenAddress);
 
   // Determine token program (support TOKEN_2022 and SPL)
-  const mintInfo = await connection.getAccountInfo(mint);
+  const mintInfo = await connection.getAccountInfo(tokenMint);
   if (!mintInfo) throw new Error("Mint not found");
   const tokenProgramId = mintInfo.owner.equals(TOKEN_2022_PROGRAM_ID)
     ? TOKEN_2022_PROGRAM_ID
     : SPL_TOKEN_PROGRAM_ID;
 
-  const sourceAccount = getAssociatedTokenAddressSync(
-    mint,
-    caller,
+  const authority = getAssociatedTokenAddressSync( // not sure what this is? just a copy of caller for now?
+    tokenMint,
+    payer,
     true,
     tokenProgramId,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
   const tokenManagerAta = getAssociatedTokenAddressSync(
-    mint,
+    tokenMint,
     tokenManagerPda,
     true,
     tokenProgramId,
     ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+
+  const authorityTokenAccount = getAssociatedTokenAddressSync(
+      tokenMint,
+      authority,
+      true,
+      tokenProgramId,
+      ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   // Flow slot PDA requires epoch (current timestamp / 6h)
@@ -92,15 +100,13 @@ export async function buildInterchainTransferTx(
   const epoch = Math.floor(now / (6 * 60 * 60));
   const flowEpochBuf = Buffer.alloc(8);
   flowEpochBuf.writeBigUInt64LE(BigInt(epoch));
-  const [flowSlotPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("flow-slot"), tokenManagerPda.toBuffer(), flowEpochBuf],
-    itsProgramId
-  );
 
   const [gatewayRootPda] = findGatewayRootPda(gatewayProgramId);
-  const [gasConfigPda] = await findGasConfigPda(gasServiceProgramId);
-  const [callContractSigningPda, signingPdaBump] =
+  const [signingPda, signingPdaBump] =
     findCallContractSigningPda(itsProgramId);
+  const [gatewayEventAuthority] = findEventAuthority(gatewayProgramId);
+  const [gasEventAuthority] = findEventAuthority(gasServiceProgramId);
+  const [gasTreasury] = findGasTreasuryPda(gasServiceProgramId);
 
   const destinationAddressBytes = Buffer.from(
     input.destinationAddress.replace(/^0x/, ""),
@@ -109,41 +115,51 @@ export async function buildInterchainTransferTx(
   const amount = BigInt(input.amount);
   const gas = BigInt(input.gasValue ?? "0");
   const payload = input.payload ?? "";
-  const instructionId = input.payload ? CALL_CONTRACT_WITH_TOKEN_INSTRUCTION_ID : INTERCHAIN_TRANSFER_INSTRUCTION_ID;
 
-  let encodedPayload = Buffer.from("");
-  if(instructionId == CALL_CONTRACT_WITH_TOKEN_INSTRUCTION_ID) {
-    encodedPayload = Buffer.concat([encodeU32LE(payload.length), Buffer.from(payload)])
+  let encodedPayload = Buffer.from("\0");
+  if (payload.length > 0) {
+    encodedPayload = Buffer.concat([Buffer.from("\x01"), encodeU32LE(payload.length), Buffer.from(payload)]);
   }
 
   const data = Buffer.concat([
-    encodeVariantU8(instructionId),
+    // instruction id
+    encodeVariantU8(INTERCHAIN_TRANSFER_INSTRUCTION_ID),
+    // token_id
     Buffer.from(tokenIdBytes),
+    // destination_chain
     encodeStringBorsh(input.destinationChain),
+    // destination_address
     encodeU32LE(destinationAddressBytes.length),
     Buffer.from(destinationAddressBytes),
+    // amount
     encodeU64LE(amount),
-    encodedPayload,
+    // gas_value
     encodeU64LE(gas),
-    Buffer.from([signingPdaBump]),
+    // source_id
+    Buffer.from("\x00"), // for now, we are calling it as EOA
+    // pda_seeds
+    Buffer.from("\x00"), // for now, we are calling it as EOA
+    encodedPayload,
   ]);
 
   const keys = [
-    { pubkey: caller, isSigner: true, isWritable: false },
-    { pubkey: sourceAccount, isSigner: false, isWritable: true },
-    { pubkey: mint, isSigner: false, isWritable: true },
-    { pubkey: tokenManagerPda, isSigner: false, isWritable: false },
-    { pubkey: tokenManagerAta, isSigner: false, isWritable: true },
-    { pubkey: tokenProgramId, isSigner: false, isWritable: false },
-    { pubkey: flowSlotPda, isSigner: false, isWritable: true },
+    { pubkey: payer, isSigner: true, isWritable: true },
+    { pubkey: authority, isSigner: true, isWritable: false },
     { pubkey: gatewayRootPda, isSigner: false, isWritable: false },
+    { pubkey: gatewayEventAuthority, isSigner: false, isWritable: false },    
     { pubkey: gatewayProgramId, isSigner: false, isWritable: false },
-    { pubkey: gasConfigPda, isSigner: false, isWritable: true },
+    { pubkey: signingPda, isSigner: false, isWritable: false },
+    { pubkey: gasTreasury, isSigner: false, isWritable: true },
     { pubkey: gasServiceProgramId, isSigner: false, isWritable: false },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: gasEventAuthority, isSigner: false, isWritable: false },
     { pubkey: itsRootPda, isSigner: false, isWritable: false },
-    { pubkey: callContractSigningPda, isSigner: false, isWritable: false },
-    { pubkey: itsProgramId, isSigner: false, isWritable: false },
+    { pubkey: tokenManagerPda, isSigner: false, isWritable: true },
+    { pubkey: tokenProgramId, isSigner: false, isWritable: false },
+    { pubkey: tokenMint, isSigner: false, isWritable: true },
+    { pubkey: authorityTokenAccount, isSigner: false, isWritable: true },
+    { pubkey: tokenManagerAta, isSigner: false, isWritable: true },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    //{ pubkey: itsProgramId, isSigner: false, isWritable: false },
   ];
 
   const ix = new TransactionInstruction({
@@ -163,7 +179,7 @@ export async function buildInterchainTransferTx(
   }
 
   tx.add(ix);
-  tx.feePayer = caller;
+  tx.feePayer = payer;
   const { blockhash } = await connection.getLatestBlockhash("confirmed");
   tx.recentBlockhash = blockhash;
 

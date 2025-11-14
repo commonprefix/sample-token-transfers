@@ -37,7 +37,7 @@ export async function getSolanaChainConfig(): Promise<SolanaChainConfig> {
   const chainConfig = await getChainConfig();
 
   const solanaChainId = Object.keys(chainConfig.chains).find(
-    (chain) => chainConfig.chains[chain].chainType === "svm",
+    (chain) => chainConfig.chains[chain].id === "solana-12",
   ) as string;
 
   return chainConfig.chains[solanaChainId];

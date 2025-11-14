@@ -13,7 +13,8 @@ const PREFIX_CUSTOM_TOKEN_SALT = "solana-custom-token-salt";
 const FLOW_SLOT_SEED = "flow-slot";
 const USER_ROLES_SEED = "user-roles";
 const CALL_CONTRACT_SIGNING_SEED = "gtw-call-contract";
-const GAS_CONFIG_SEED = "gas-service";
+const GAS_TREASURY_SEED = "gas-service";
+const EVENT_AUTHORITY_SEED = "__event_authority";
 
 export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
@@ -37,7 +38,7 @@ export function findTokenManagerPda(
   );
 }
 
-export function findInterchainTokenPda(
+export function findInterchainTokenPda( // couldn't find
   itsProgramId: PublicKey,
   itsRootPda: PublicKey,
   tokenId: Uint8Array
@@ -48,7 +49,7 @@ export function findInterchainTokenPda(
   );
 }
 
-export function findFlowSlotPda(
+export function findFlowSlotPda( // this is no longer used! it is just a value in ITS and TokenManager accounts -> might change?
   itsProgramId: PublicKey,
   tokenManagerPda: PublicKey,
   epoch: number
@@ -102,27 +103,21 @@ export function findGatewayRootPda(
   );
 }
 
-export async function findGasConfigPda(
-  gasServiceProgramId: PublicKey
-): Promise<[PublicKey, number]> {
-  // for now, hardcode the expected value
-  // likely there will be changes how the gas config pda is derived in the future:
-  // c.f. https://github.com/eigerco/axelar-amplifier-solana/commit/f4da7b6a586f77ce47958e176da39f3ff1595371
-  //  but https://github.com/axelarnetwork/axelar-contract-deployments/blob/062efa082fcfcfca593107fbfb90f814c9405dcd/solana/src/gas_service.rs#L83 
-  return [new PublicKey("GQ3Yde4evoph1qnogmb8VASZgqzXUxbVKx4oxnNbcZK9"), 0];
-
-  const chainConfig = await getSolanaChainConfig();
-  const gasServiceOperator = (chainConfig.config as any)?.contracts?.AxelarGasService?.operator as string | undefined;
-  if (!gasServiceOperator) {
-    throw new Error("Gas Service Operator address not found in Solana config");
-  }
-  const gasServiceOperatorPK = new PublicKey(gasServiceOperator);
-
-  console.log("Deriving gas config pda from", GAS_CONFIG_SEED, gasServiceOperatorPK.toBase58());
-  console.log("GAS CONFIG SEED: ", gasConfigSalt());
+export function findEventAuthority(
+  programId: PublicKey
+): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [gasConfigSalt(), gasServiceOperatorPK.toBytes()],
-    gasServiceProgramId
+    [Buffer.from(EVENT_AUTHORITY_SEED)],
+    programId
+  );
+}
+
+export function findGasTreasuryPda(
+  programId: PublicKey
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(GAS_TREASURY_SEED)],
+    programId
   );
 }
 
