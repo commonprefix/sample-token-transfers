@@ -112,7 +112,7 @@ export async function buildInterchainTransferTx(
 
   const authorityTokenAccount = getAssociatedTokenAddressSync(
       tokenMint,
-      authority,
+      payer,
       true,
       tokenProgramId,
       ASSOCIATED_TOKEN_PROGRAM_ID
@@ -167,7 +167,7 @@ export async function buildInterchainTransferTx(
 
   const keys = [
     { pubkey: payer, isSigner: true, isWritable: true },
-    { pubkey: authority, isSigner: true, isWritable: false },
+    { pubkey: payer, isSigner: true, isWritable: false }, // replaced `authority` with `payer` because it is an EOA?
     { pubkey: gatewayRootPda, isSigner: false, isWritable: false },
     { pubkey: gatewayEventAuthority, isSigner: false, isWritable: false },    
     { pubkey: gatewayProgramId, isSigner: false, isWritable: false },
@@ -182,7 +182,6 @@ export async function buildInterchainTransferTx(
     { pubkey: authorityTokenAccount, isSigner: false, isWritable: true },
     { pubkey: tokenManagerAta, isSigner: false, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    //{ pubkey: itsProgramId, isSigner: false, isWritable: false },
   ];
 
   const ix = new TransactionInstruction({
