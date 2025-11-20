@@ -17,6 +17,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
     "@axelar-network/axelarjs-sdk": "^0.17.5",
     "@axelarjs/sui": "0.0.0-snapshot.8996e1c",
     "@coral-xyz/anchor": "^0.31.1",
