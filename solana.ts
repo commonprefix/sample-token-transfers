@@ -136,5 +136,5 @@ const signature = await sendAndConfirmTransaction(connection, tx, [
 
 console.log("Sent transaction!", signature);
 console.log("View it on the explorer: https://explorer.solana.com/tx/" + signature + '?cluster=' + solanaCluster);
-console.log("View it on Axelarscan: " + axelarscanUrl + "/gmp/" + signature + '-15'); // might have to update this index
+console.log("View it on Axelarscan: " + axelarscanUrl + "/gmp/" + signature + '-1.7'); // might have to update this index
 

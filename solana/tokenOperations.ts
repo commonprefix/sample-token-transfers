@@ -129,6 +129,7 @@ export async function buildInterchainTransferTx(
     findCallContractSigningPda(itsProgramId);
   const [gatewayEventAuthority] = findEventAuthority(gatewayProgramId);
   const [gasEventAuthority] = findEventAuthority(gasServiceProgramId);
+  const [itsEventAuthority] = findEventAuthority(itsProgramId);
   const [gasTreasury] = findGasTreasuryPda(gasServiceProgramId);
 
   const destinationAddressBytes = Buffer.from(
@@ -182,6 +183,8 @@ export async function buildInterchainTransferTx(
     { pubkey: authorityTokenAccount, isSigner: false, isWritable: true },
     { pubkey: tokenManagerAta, isSigner: false, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: itsEventAuthority, isSigner: false, isWritable: false },
+    { pubkey: itsProgramId, isSigner: false, isWritable: false },
   ];
 
   const ix = new TransactionInstruction({
