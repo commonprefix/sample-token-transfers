@@ -27,8 +27,21 @@ import {
   getItsProgramId,
 } from "./utils";
 import { getSolanaChainConfig } from "../common/chains";
+import * as borsh from 'borsh';
 
 const GMP_CALL_INSTRUCTION_ID = await anchorInstructionDiscriminator("call_contract");
+
+export function encodeSolanaTxAsGMPPayload(
+    keys: {pubkey: PublicKey, isSigner: boolean, isWritable: boolean}[],
+    inputScheme: any,
+    inputs: any,
+): Buffer<ArrayBufferLike> {
+    const inputSerialized = borsh.serialize(inputScheme, inputs);
+    const keysSerialized = keys.map(({pubkey, isSigner, isWritable}) => (
+        Buffer.concat([pubkey.toBuffer(), Buffer.from(isSigner ? '\x01' : '\x00'), Buffer.from(isWritable ? '\x01' : '\x00')])
+    ));
+    return Buffer.concat([Buffer.concat(keysSerialized), inputSerialized]);
+}
 
 export async function buildCallContractTx(
   input: GMPCallInput,
@@ -79,6 +92,32 @@ export async function buildCallContractTx(
     { pubkey: gatewayEventAuthority, isSigner: false, isWritable: false },    
     { pubkey: gatewayProgramId, isSigner: false, isWritable: false },
   ];
+
+  class CallContractSchema {
+    destination_chain: string;
+    destination_contract_address: string;
+    payload: string;
+    signing_pda_bump: Number;
+    constructor(destination_chain: string, destination_contract_address: string, payload: string, signing_pda_bump: Number) {
+        this.destination_chain = destination_chain;
+        this.destination_contract_address = destination_contract_address;
+        this.payload = payload;
+        this.signing_pda_bump = signing_pda_bump;
+    }
+  }
+
+  const schema = {
+    struct: {
+      destination_chain: 'string',
+      destination_contract_address: 'string',
+      payload: 'string',
+      signing_pda_bump: 'u8', // unsigned 64-bit integer
+    },
+  };
+
+  // test the SolanaTxAsGMPPayload with this tx
+  const txAsPayload = encodeSolanaTxAsGMPPayload(keys, schema, new CallContractSchema(input.destinationChain, input.destinationAddress, payload, 0));
+  console.log("Tx as Payload: " + txAsPayload);
 
   const ix = new TransactionInstruction({
     programId: gatewayProgramId,

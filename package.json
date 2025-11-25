@@ -25,6 +25,7 @@
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
     "borsh": "^2.0.0",
+    "borsh-js": "^0.0.1-security",
     "ethers": "^5.8.0",
     "ripple-address-codec": "^5.0.0",
     "xrpl": "4.2.0"
