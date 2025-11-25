@@ -24,6 +24,7 @@ import {
   type InterchainTransferInput,
 } from "./types";
 import {
+  anchorInstructionDiscriminator,
   encodeStringBorsh,
   encodeU32LE,
   encodeU64LE,
@@ -34,33 +35,10 @@ import {
 } from "./utils";
 import { getSolanaChainConfig } from "../common/chains";
 
-import { Sha256 } from "@aws-crypto/sha256-js";
-
 // SPL Token program ID (regular SPL tokens)
 const SPL_TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
-
-/**
- * Computes the Anchor instruction discriminator
- * Equivalent to:
- *   let preimage = format!("global:{}", method_name);
- *   let discriminator = &sha256(preimage.as_bytes())[0..8];
- *
- * @param methodName Anchor instruction name
- * @returns Promise<Buffer> exactly 8 bytes
- */
-export async function anchorInstructionDiscriminator(
-  methodName: string
-): Promise<Buffer> {
-  const preimage = `global:${methodName}`;
-  const encoder = new TextEncoder();
-  const sha = new Sha256();
-  sha.update(encoder.encode(preimage));
-
-  const digest = await sha.digest(); // returns Uint8Array (32 bytes)
-  return Buffer.from(digest.slice(0, 8)); // first 8 bytes = discriminator
-}
 
 const INTERCHAIN_TRANSFER_INSTRUCTION_ID = await anchorInstructionDiscriminator("interchain_transfer");
 

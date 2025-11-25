@@ -1,6 +1,27 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getSolanaChainConfig } from "../common/chains";
+import { Sha256 } from "@aws-crypto/sha256-js";
 
+/**
+ * Computes the Anchor instruction discriminator
+ * Equivalent to:
+ *   let preimage = format!("global:{}", method_name);
+ *   let discriminator = &sha256(preimage.as_bytes())[0..8];
+ *
+ * @param methodName Anchor instruction name
+ * @returns Promise<Buffer> exactly 8 bytes
+ */
+export async function anchorInstructionDiscriminator(
+  methodName: string
+): Promise<Buffer> {
+  const preimage = `global:${methodName}`;
+  const encoder = new TextEncoder();
+  const sha = new Sha256();
+  sha.update(encoder.encode(preimage));
+
+  const digest = await sha.digest(); // returns Uint8Array (32 bytes)
+  return Buffer.from(digest.slice(0, 8)); // first 8 bytes = discriminator
+}
 
 export async function getItsProgramId(): Promise<PublicKey> {
   const chainConfig = await getSolanaChainConfig();
