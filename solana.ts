@@ -5,7 +5,8 @@ import { environment } from "./common/env";
 import { Connection, clusterApiUrl, LAMPORTS_PER_SOL, sendAndConfirmTransaction, type Cluster } from "@solana/web3.js";
 import { fundWallet } from "./solana/wallet";
 import { buildInterchainTransferTx } from "./solana/tokenOperations";
-import { type InterchainTransferInput } from "./solana/types";
+import { type GMPCallInput, type InterchainTransferInput } from "./solana/types";
+import { buildCallContractTx } from "./solana/sendGMP";
 
 // --- Constants ---
 const TOKEN_ID: string = process.argv[2] || "f238f2d38d16c5f472629c401433ccb704eea5e9d1aa8bb8e75e3628db65dc65";
@@ -114,19 +115,38 @@ console.log(` 💰 Median Prioritization Fee (excluding slots with zero fees): $
 const GAS = await calculateEstimatedFee(SOLANA_CONFIG.id, DESTINATION_CHAIN, PAYLOAD);
 console.log("Estimated gas as", GAS);
 
-const params = {
-  caller: keypair.publicKey.toString(),
-  tokenId: TOKEN_ID,
-  tokenAddress: TOKEN_ADDRESS,
-  destinationChain: DESTINATION_CHAIN,
-  destinationAddress: DESTINATION_ADDRESS,  
-  amount: AMOUNT,
-  gasValue: GAS,
-  priorityFee: averageFeeIncludingZeros, // use the average priority fee
-  payload: PAYLOAD,
-} as InterchainTransferInput;
+let tx;
+let axelarscanIndex;
 
-const tx = await buildInterchainTransferTx(params);
+if (TOKEN_ID == "0x") {
+  console.log("Performing pure GMP call instead of ITS transfer");
+  const params = {
+    caller: keypair.publicKey.toString(),
+    destinationChain: DESTINATION_CHAIN,
+    destinationAddress: DESTINATION_ADDRESS,  
+    gasValue: GAS,
+    priorityFee: averageFeeIncludingZeros, // use the average priority fee
+    payload: PAYLOAD,
+  } as GMPCallInput;
+
+  tx = await buildCallContractTx(params);
+  axelarscanIndex = '1.1';
+} else {
+  const params = {
+    caller: keypair.publicKey.toString(),
+    tokenId: TOKEN_ID,
+    tokenAddress: TOKEN_ADDRESS,
+    destinationChain: DESTINATION_CHAIN,
+    destinationAddress: DESTINATION_ADDRESS,  
+    amount: AMOUNT,
+    gasValue: GAS,
+    priorityFee: averageFeeIncludingZeros, // use the average priority fee
+    payload: PAYLOAD,
+  } as InterchainTransferInput;
+
+  tx = await buildInterchainTransferTx(params);
+  axelarscanIndex = '2.7';
+}
 
 tx.sign(keypair);
 
@@ -136,5 +156,5 @@ const signature = await sendAndConfirmTransaction(connection, tx, [
 
 console.log("Sent transaction!", signature);
 console.log("View it on the explorer: https://explorer.solana.com/tx/" + signature + '?cluster=' + solanaCluster);
-console.log("View it on Axelarscan: " + axelarscanUrl + "/gmp/" + signature + '-1.7'); // might have to update this index
+console.log("View it on Axelarscan: " + axelarscanUrl + "/gmp/" + signature + '-' + axelarscanIndex);
 
