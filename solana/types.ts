@@ -9,3 +9,12 @@ export type InterchainTransferInput = {
   priorityFee: number;
   payload: string;
 };
+
+export type GMPCallInput = {
+  caller: string;
+  destinationChain: string;
+  destinationAddress: string;
+  gasValue: string;
+  priorityFee: number;
+  payload: string;
+};
