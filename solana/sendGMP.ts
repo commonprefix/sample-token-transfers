@@ -31,21 +31,46 @@ import * as borsh from 'borsh';
 
 const GMP_CALL_INSTRUCTION_ID = await anchorInstructionDiscriminator("call_contract");
 
-export function encodeSolanaTxAsGMPPayload(
-    keys: {pubkey: PublicKey, isSigner: boolean, isWritable: boolean}[],
-    inputScheme: any,
-    inputs: any,
-): Buffer<ArrayBufferLike> {
+export function encodeSendMemoCall(memoProgramId: PublicKey, data: string) {
+  const [counterPda, counterBump] = PublicKey.findProgramAddressSync(
+    [Buffer.from("counter")],
+    memoProgramId
+  );
+
+  const keys = [{pubkey: counterPda, isSigner: false, isWritable: true}];
+
+  const dataEncoded = Buffer.from(data);
+  return encodeSolanaTxAsGMPPayload(dataEncoded, keys);
+}
+
+export function borshEncode(inputScheme: any, inputs: any): Uint8Array<ArrayBufferLike> {
     const inputSerialized = borsh.serialize(inputScheme, inputs);
-    const keysSerialized = keys.map(({pubkey, isSigner, isWritable}) => (
-        Buffer.concat([pubkey.toBuffer(), Buffer.from(isSigner ? '\x01' : '\x00'), Buffer.from(isWritable ? '\x01' : '\x00')])
-    ));
-    return Buffer.concat([Buffer.concat(keysSerialized), inputSerialized]);
+    return inputSerialized;
+} 
+
+export function encodeSolanaTxAsGMPPayload(
+    payload: Uint8Array<ArrayBufferLike>,
+    keys: {pubkey: PublicKey, isSigner: boolean, isWritable: boolean}[],
+): Uint8Array<ArrayBufferLike> {
+    const keysSerialized = keys.map(({pubkey, isSigner, isWritable}) => {
+        const signerWritableEncoded = (isWritable ? 2 : 0) + (isSigner ? 1 : 0);
+        return Buffer.concat([pubkey.toBuffer(), Buffer.from(String.fromCharCode(signerWritableEncoded))]);
+    });
+    // 0 -> use borsh scheme, len of inner payload bytes, inner payload, serialized keys array 
+    return Buffer.concat([Buffer.from('\x00'), encodeU32LE(payload.length), payload, encodeU32LE(keysSerialized.length), Buffer.concat(keysSerialized)]);
+}
+
+export function encodeITSTransferPayloadForEVM(payload: Uint8Array<ArrayBufferLike>) {
+    // for some reason, when we call interchainTransfer on an EVM chain, we need to prepend a u32 versionUint that should be 0
+    return Buffer.concat([Buffer.from('\x00'.repeat(4)), payload]); 
 }
 
 export async function buildCallContractTx(
   input: GMPCallInput,
 ): Promise<Transaction> {
+  const sendMemo = encodeSendMemoCall(new PublicKey("mem5NJXuxU7b4UJqq6ib8XUjk1Hnp4z2B1szyRZ8bLv"), "TS encode");
+  console.log("Send Memo Payload: ", Buffer.from(sendMemo).toString("hex"));
+
   const chainConfig = await getSolanaChainConfig();
   const rpcUrl = chainConfig.config.rpc?.[0];
   if (!rpcUrl) throw new Error("No Solana RPC configured");
@@ -66,6 +91,42 @@ export async function buildCallContractTx(
     "hex"
   );
   const gas = BigInt(input.gasValue ?? "0");
+
+//   class CallContractSchema {
+//     destination_chain: string;
+//     destination_contract_address: string;
+//     payload: string;
+//     signing_pda_bump: Number;
+//     constructor(destination_chain: string, destination_contract_address: string, payload: string, signing_pda_bump: Number) {
+//         this.destination_chain = destination_chain;
+//         this.destination_contract_address = destination_contract_address;
+//         this.payload = payload;
+//         this.signing_pda_bump = signing_pda_bump;
+//     }
+//   }
+
+//   const schema = {
+//     struct: {
+//       destination_chain: 'string',
+//       destination_contract_address: 'string',
+//       payload: 'string',
+//       signing_pda_bump: 'u8', // unsigned 64-bit integer
+//     },
+//   };
+
+//   // test the SolanaTxAsGMPPayload with this tx
+//   const borshsSerializedPayload = borshEncode(schema, new CallContractSchema(input.destinationChain, input.destinationAddress, payload, 0));
+//   if (borshsSerializedPayload !== data) {
+//     console.error("Borsh serialized payload:", borshsSerializedPayload);
+//     console.error("Custom encoding:", data);
+//     throw Error("Mismatched serializations");
+//   }
+//
+//  const txAsPayload = encodeSolanaTxAsGMPPayload(borshsSerializedPayload, keys);
+//  console.log("Tx as Payload: " + txAsPayload);
+//  const txAsEVMPayload = encodeITSTransferPayloadForEVM(txAsPayload);
+//  console.log("Tx as EVM ITS Payload: ", txAsEVMPayload);
+
   const payload = input.payload ?? "";
 
   const encodedPayload = Buffer.concat([encodeU32LE(payload.length), Buffer.from(payload)]);
@@ -92,32 +153,6 @@ export async function buildCallContractTx(
     { pubkey: gatewayEventAuthority, isSigner: false, isWritable: false },    
     { pubkey: gatewayProgramId, isSigner: false, isWritable: false },
   ];
-
-  class CallContractSchema {
-    destination_chain: string;
-    destination_contract_address: string;
-    payload: string;
-    signing_pda_bump: Number;
-    constructor(destination_chain: string, destination_contract_address: string, payload: string, signing_pda_bump: Number) {
-        this.destination_chain = destination_chain;
-        this.destination_contract_address = destination_contract_address;
-        this.payload = payload;
-        this.signing_pda_bump = signing_pda_bump;
-    }
-  }
-
-  const schema = {
-    struct: {
-      destination_chain: 'string',
-      destination_contract_address: 'string',
-      payload: 'string',
-      signing_pda_bump: 'u8', // unsigned 64-bit integer
-    },
-  };
-
-  // test the SolanaTxAsGMPPayload with this tx
-  const txAsPayload = encodeSolanaTxAsGMPPayload(keys, schema, new CallContractSchema(input.destinationChain, input.destinationAddress, payload, 0));
-  console.log("Tx as Payload: " + txAsPayload);
 
   const ix = new TransactionInstruction({
     programId: gatewayProgramId,
