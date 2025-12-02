@@ -127,7 +127,7 @@ export async function buildCallContractTx(
 //  const txAsEVMPayload = encodeITSTransferPayloadForEVM(txAsPayload);
 //  console.log("Tx as EVM ITS Payload: ", txAsEVMPayload);
 
-  const payload = input.payload ?? "";
+  const payload = input.payload;
 
   const encodedPayload = Buffer.concat([encodeU32LE(payload.length), Buffer.from(payload)]);
 

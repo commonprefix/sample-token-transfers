@@ -116,7 +116,7 @@ export async function buildInterchainTransferTx(
   );
   const amount = BigInt(input.amount);
   const gas = BigInt(input.gasValue ?? "0");
-  const payload = input.payload ?? "";
+  const payload = input.payload;
 
   let encodedPayload = Buffer.from("\0");
   if (payload.length > 0) {

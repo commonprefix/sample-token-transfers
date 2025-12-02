@@ -15,7 +15,18 @@ const DESTINATION_CHAIN: string = process.argv[4] || "avalanche-fuji";
 const DESTINATION_ADDRESS: string = process.argv[5] || "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2";
 const AMOUNT = process.argv[6] || "1";
 let PAYLOAD = process.argv[7] || null;
-if((PAYLOAD ?? "").length > 530) {
+let payloadBytes = new Uint8Array();
+
+if (PAYLOAD !== null) {
+  if (PAYLOAD.slice(0, 2) == "0x") {
+    // hex decode this
+    payloadBytes = Uint8Array.fromHex(PAYLOAD.slice(2));
+  } else {
+    payloadBytes = Uint8Array.from(PAYLOAD);
+  }
+}
+
+if(payloadBytes.length > 530) {
   throw new Error("Payload too long! Consider using off-chain data");
 }
 
@@ -126,7 +137,7 @@ if (TOKEN_ID == "0x") {
     destinationAddress: DESTINATION_ADDRESS,  
     gasValue: GAS,
     priorityFee: averageFeeIncludingZeros, // use the average priority fee
-    payload: PAYLOAD,
+    payload: payloadBytes,
   } as GMPCallInput;
 
   tx = await buildCallContractTx(params);
@@ -141,7 +152,7 @@ if (TOKEN_ID == "0x") {
     amount: AMOUNT,
     gasValue: GAS,
     priorityFee: averageFeeIncludingZeros, // use the average priority fee
-    payload: PAYLOAD,
+    payload: payloadBytes,
   } as InterchainTransferInput;
 
   tx = await buildInterchainTransferTx(params);

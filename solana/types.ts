@@ -7,7 +7,7 @@ export type InterchainTransferInput = {
   amount: string;
   gasValue: string;
   priorityFee: number;
-  payload: string;
+  payload: Uint8Array;
 };
 
 export type GMPCallInput = {
@@ -16,5 +16,5 @@ export type GMPCallInput = {
   destinationAddress: string;
   gasValue: string;
   priorityFee: number;
-  payload: string;
+  payload: Uint8Array;
 };
