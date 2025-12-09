@@ -72,3 +72,23 @@ Example:
 ```bash
 bun xrpl:trust-line SQD 10000
 ```
+
+## Solana ITS Transfer
+
+Send example token (currently set to f238f2d38d16c5f472629c401433ccb704eea5e9d1aa8bb8e75e3628db65dc65) from Solana to other chain:
+
+```bash
+bun solana:start <token-id> <token-address> <destination-chain> <destination-address> <amount> <payload>
+```
+
+Example:
+
+```bash
+bun solana:start f238f2d38d16c5f472629c401433ccb704eea5e9d1aa8bb8e75e3628db65dc65 8yqTiWbBsd82Lcnw3wJpX2mTVPxyftKKoMt2hCA2m2wS avalanche-fuji 0x5eaF5407acc1be854644BE2Be20Ac23D07e491D6 1 "Hello from Solana"
+```
+
+> Note: the destination address and amount are optional.
+> There is no "gas price" on Solana - transaction fees are fixed, and there is an optional priority fee. 
+> The script will display the average prioritization fee as returned by the RPC.
+> Specifying a payload is optional.
+> Example GMP call: https://devnet-amplifier.axelarscan.io/gmp/5UWgw1wpveXdaKwGnWzLmzhpbC4gSB9Pu2s5orR4wjLtKCtnMygikWdFRVuv37ze1Hnf9ubVEUG4FhcUYbKKqzzx-15

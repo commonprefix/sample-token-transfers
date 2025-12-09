@@ -1,4 +1,4 @@
-import type { SuiChainConfig, XrplChainConfig } from "./types";
+import type { SuiChainConfig, XrplChainConfig, SolanaChainConfig } from "./types";
 import { environment } from "../common/env";
 
 export async function getChainConfig() {
@@ -31,4 +31,14 @@ export async function getXrplChainConfig(): Promise<XrplChainConfig> {
   ) as string;
 
   return chainConfig.chains[xrplChainId];
+}
+
+export async function getSolanaChainConfig(): Promise<SolanaChainConfig> {
+  const chainConfig = await getChainConfig();
+
+  const solanaChainId = Object.keys(chainConfig.chains).find(
+    (chain) => chainConfig.chains[chain].id === "solana-12",
+  ) as string;
+
+  return chainConfig.chains[solanaChainId];
 }
