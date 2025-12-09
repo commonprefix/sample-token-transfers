@@ -18,7 +18,10 @@
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",
-    "@axelar-network/axelarjs-sdk": "^0.17.5",
+    "@axelar-network/axelarjs-sdk": "../../axelarjs-sdk",
+    "@axelar-network/axelarjs-sdk": "../../axelarjs-sdk",
+    "@axelar-network/axelarjs-sdk": "../../axelarjs-sdk",
+    "@axelar-network/axelarjs-sdk": "../../axelarjs-sdk",
     "@axelarjs/sui": "0.0.0-snapshot.8996e1c",
     "@coral-xyz/anchor": "^0.31.1",
     "@mysten/sui": "~1.24.0",

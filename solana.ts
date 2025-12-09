@@ -7,6 +7,8 @@ import { fundWallet } from "./solana/wallet";
 import { buildInterchainTransferTx } from "./solana/tokenOperations";
 import { type GMPCallInput, type InterchainTransferInput } from "./solana/types";
 import { buildCallContractTx } from "./solana/sendGMP";
+import { AxelarGMPRecoveryAPI, Environment } from "@axelar-network/axelarjs-sdk";
+import { getScaledUiAmountConfig } from "@solana/spl-token";
 
 // --- Constants ---
 const TOKEN_ID: string = process.argv[2] || "f238f2d38d16c5f472629c401433ccb704eea5e9d1aa8bb8e75e3628db65dc65";
@@ -129,36 +131,18 @@ console.log("Estimated gas as", GAS);
 let tx;
 let axelarscanIndex;
 
-if (TOKEN_ID == "0x") {
-  console.log("Performing pure GMP call instead of ITS transfer");
-  const params = {
-    caller: keypair.publicKey.toString(),
-    destinationChain: DESTINATION_CHAIN,
-    destinationAddress: DESTINATION_ADDRESS,  
-    gasValue: GAS,
-    priorityFee: averageFeeIncludingZeros, // use the average priority fee
-    payload: payloadBytes,
-  } as GMPCallInput;
+let recoveryArgs = {
+  messageId: 'bSFDztAarx8mu1BmJBvNBdi4A4wqqTyzNCikPaCcaFX3DimqszheGTGy7xC8Dw1C8id3VAUWm5qYHuu1yRMoFjR-1.1',
+  gasFeeAmount: GAS,
+  sender: keypair.publicKey.toBase58(),
+  refundAddress: keypair.publicKey.toBase58(),
+};
+console.log("Recovery Args:", recoveryArgs);
 
-  tx = await buildCallContractTx(params);
-  axelarscanIndex = '1.1';
-} else {
-  const params = {
-    caller: keypair.publicKey.toString(),
-    tokenId: TOKEN_ID,
-    tokenAddress: TOKEN_ADDRESS,
-    destinationChain: DESTINATION_CHAIN,
-    destinationAddress: DESTINATION_ADDRESS,  
-    amount: AMOUNT,
-    gasValue: GAS,
-    priorityFee: averageFeeIncludingZeros, // use the average priority fee
-    payload: payloadBytes,
-  } as InterchainTransferInput;
-
-  tx = await buildInterchainTransferTx(params);
-  axelarscanIndex = '2.7';
-}
-
+let recoveryAPI = new AxelarGMPRecoveryAPI({environment: Environment.DEVNET});
+tx = await recoveryAPI.addGasToSolanaChain(recoveryArgs);
+const { blockhash } = await connection.getLatestBlockhash("confirmed");
+tx.recentBlockhash = blockhash;
 tx.sign(keypair);
 
 const signature = await sendAndConfirmTransaction(connection, tx, [
