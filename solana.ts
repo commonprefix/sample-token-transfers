@@ -132,7 +132,7 @@ let tx;
 let axelarscanIndex;
 
 let recoveryArgs = {
-  messageId: 'bSFDztAarx8mu1BmJBvNBdi4A4wqqTyzNCikPaCcaFX3DimqszheGTGy7xC8Dw1C8id3VAUWm5qYHuu1yRMoFjR-1.1',
+  messageId: '4zX6wMPqNJbFWkArcJ27vUC9HNyZmj7kogbnFyeKHgeCYRQtRumhJEgYtpfUkb63P4MvYVXcbWsCBBoVKtg246Cv-1.7',
   gasFeeAmount: GAS,
   sender: keypair.publicKey.toBase58(),
   refundAddress: keypair.publicKey.toBase58(),
